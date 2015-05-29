@@ -160,6 +160,7 @@ public class AkeView implements ActionListener, GameView {
         panel.setOpaque(true);
         //Titled borders
         TitledBorder tb;
+        tb = BorderFactory.createTitledBorder(title);
         panel.setBorder(tb);
         tb.setTitleColor(titleColor);
         tb.setTitleFont(new Font("Arial", Font.BOLD, 14));
