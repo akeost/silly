@@ -32,9 +32,12 @@ interface GameView {
 
 class Client {
 - MessageSender sender
+- GuiFactory guiFactory
 - GameView view
 - PlayerListener pl
 + static void main()
+GuiFactroy gui = new GuiFactoryImpl()
+GameView view = guiFactory.createGameView()
 }
 
 class Controller implements PlayerListener, ServerListener {
@@ -44,13 +47,30 @@ class Controller implements PlayerListener, ServerListener {
 }
 note right of Controller: The controller is bound to the view. \nThis typically means that any user \nactions that are performed on the \nview will invoke a registered listener method \nin the controller class. \nThe controller is given a reference to the\n underlying model.
 
-class AkeView implements GameView, ActionListener {
+abstract class GuiFactory {
+ + {abstract} GameView createGameView
+ }
+ Note bottom of GuiFactory: We want to change the View impl. without changing \nthe caller (Client) to reduce/having loose coupling \ntowards (any) GUI. Here, the FDP creates new \nobject(s) of whatever impl. it chooses.
+
+ class GuiFactoryImpl {
+ + GameView createGameView()
+ }
+
+class AkeView implements ActionListener {
 - JFrame frame
 - PlayerListener pl
+--
 + setPLayerListener()
+--
++ appendChatText()
 }
 note right of (AkeView): The view registers as a listener on the model.\n Any changes to the underlying data \nof the model immediately result in a broadcast\n change notification, which the view receives. \nThis is an example of the push model.
 
+class AnotherViewImpl implements ActionListener {
+- Console c
+--
++ appendChatText()
+}
 class Player {
 - Avatar a
 }
@@ -76,21 +96,48 @@ interface TransportListener {
   {abstract} onReceive()
  }
 
-class Transport implements Runnable {
- - TransportListener gtl
- + run()
- + sendMsg(Message msg)
- + addTransportListener(TransportListener gtl)
- - rcvThread()
- }
+interface Sender {
+ + addHeader()
+ + ship()
+ + send()
+}
 
- class Message implements Serializable {
+note right of Sender: Object composition and DAO Design Pattern\n- Separate low level data accessing API or operations \nfrom high level business services\nhttps://cs.uwaterloo.ca/~a78khan/courses-offered/cs446/ \n2011_05/lectures/2011_06-jun_15_DAO.pdf
+
+class ReceiverMessage implements Runnable {
+- todo
++ todo()
+}
+
+class SenderMessage {
+  - TransportListener gtl
+  - Message msg
+  ____
+  + SenderMessage(Message msg) //pass in a Message
+  + pack() // from Message (method delegate impl. to Message)
+  + send() // from Sender
+  __  ???  __
+  + run()
+  + addTransportListener(TransportListener gtl)
+  - rcvThread()
+ }
+note right of SenderMessage: Composing class that both contains and implements \nthe same interface (IS-A and HAS-A Message)
+
+ interface Message extends Serializable {
   - GameCmd cmd;
   - String response
   - String command
   + Message(GameCmd cmd, String txt)
+  + pack()
  }
- note right of Message: A final class \n(from www.bogotobogo.com/Java/tutorial/tcp_socket_server_client.php)
+ note right of Message: A final class \n(from www.bogotobogo.com/Java/ \ntutorial/tcp_socket_server_client.php)\n Object composition and\n DAO Design Pattern\n- Separate low level data accessing API or operations from \nhigh level business services\n\nCommand Pattern?
+
+class ChatMessage implements Message
+class RollDiceMessage implements Message
+class DiceRolledMessage implements Message
+class UdpSender? implements Sender
+class BroadCastSender? implements Sender
+class Pigeon? implements Sender
 
  enum GameCmd {
   JOIN
@@ -101,16 +148,26 @@ class Transport implements Runnable {
 }
 
 Client *-- Controller
-Client *-- AkeView
+Client ..> GameView : uses
 Client *-- ServerAPI
+Client ..> GuiFactory : uses
 Controller "0..*" *-- "1" Player
 Player *-- Avatar : has a symbol <
 Controller o- ServerAPI
-ServerAPI o--- Transport
-Controller o- AkeView
-Transport *-- Message
+'ServerAPI o--- Transport
+'Controller o- AkeView
+SenderMessage ..|> Sender : implements
+SenderMessage ..|> Message : implements
+AkeView ..|> GameView : implements
+GuiFactory ..> GameView : uses
+GuiFactoryImpl --|> GuiFactory : implements
+GuiFactoryImpl ..> AkeView : uses
+GuiFactoryImpl ..> AnotherViewImpl
+AnotherViewImpl ..|> GameView : implements
 
-
-
+ReceiverMessage ..|> Sender : implements
+ReceiverMessage ..|> Message : implements
+TransportApi <-- SenderMessage
+TransportApi <-- ReceiverMessage
 
 @enduml
